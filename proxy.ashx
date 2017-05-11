@@ -1,10 +1,10 @@
 <%@ WebHandler Language="C#" Class="proxy" %>
-
 /*
- * DotNet proxy client.
+ * Mofified DotNet proxy client.
  *
  * Version 1.1.1-beta
  * See https://github.com/Esri/resource-proxy for more information.
+ * or https://github.com/sverkerEsriSE/resource-proxy-tokens
  *
  */
 
@@ -22,6 +22,10 @@ using System.Net;
 public class proxy : IHttpHandler {
 
     private static String version = "1.1.1-beta";
+
+    private static String proxy_url = "";
+    private bool wmsResourceRewrite = false;
+    private string requestKey = "";
 
     class RateMeter {
         double _rate; //internal rate is stored in requests per second
@@ -65,13 +69,13 @@ public class proxy : IHttpHandler {
 
     public void ProcessRequest(HttpContext context) {
 
+        proxy_url = context.Request.Url.Scheme + "://" + context.Request.Url.Host + "/" + context.Request.Url.Segments[1];
 
         if (logTraceListener == null)
         {
             logTraceListener = new LogTraceListener();
             Trace.Listeners.Add(logTraceListener);
         }
-
 
         HttpResponse response = context.Response;
         if (context.Request.Url.Query.Length < 1)
@@ -81,12 +85,37 @@ public class proxy : IHttpHandler {
             sendErrorResponse(context.Response, null, errorMsg, System.Net.HttpStatusCode.BadRequest);
             return;
         }
+        string url = "";
+        string queryString = "";
+        string restFunction = "";
+        if (!context.Request.Url.Query.Substring(1).Contains("url="))
+        {
+            url = context.Request.Url.Query.Substring(1);
+            log(TraceLevel.Verbose, "URI requested by url: " + url);
+        }
+        else {
+            var fullQuery = context.Request.Url.Query.Substring(1).Split(new char[] {'&'}, 2);
 
-        string uri = context.Request.Url.Query.Substring(1);
-        log(TraceLevel.Verbose, "URI requested: " + uri);
+            url = fullQuery[0].Split('=')[1];
 
+            //restFunction = fullQuery[0].Split('=')[1];
+            log(TraceLevel.Verbose, "Unmodified QueryString: " + context.Request.Url.Query);
+            log(TraceLevel.Verbose, "URI requested by key: " + url);
+            requestKey = url;
+            queryString = "";
+            try {
+                if (fullQuery[1].StartsWith("restFunction")) {
+                    restFunction = fullQuery[1].Split(new char[] {'&'}, 2)[0].Replace("restFunction=","");
+                    queryString = fullQuery[1].Split(new char[] {'&'}, 2)[1];
+                }
+                log(TraceLevel.Verbose, "Querystring (using by key): " + queryString);
+            } catch (Exception ex)
+            {
+                log(TraceLevel.Verbose, "No query string supplied");
+            }
+        }
         //if uri is ping
-        if (uri.Equals("ping", StringComparison.InvariantCultureIgnoreCase))
+        if (url.Equals("ping", StringComparison.InvariantCultureIgnoreCase))
         {
             ProxyConfig proxyConfig = ProxyConfig.GetCurrentConfig();
 
@@ -111,12 +140,12 @@ public class proxy : IHttpHandler {
         }
 
         //if url is encoded, decode it.
-        if (uri.StartsWith("http%3a%2f%2f", StringComparison.InvariantCultureIgnoreCase) || uri.StartsWith("https%3a%2f%2f", StringComparison.InvariantCultureIgnoreCase))
-            uri = HttpUtility.UrlDecode(uri);
-
+        if (url.StartsWith("http%3a%2f%2f", StringComparison.InvariantCultureIgnoreCase) || url.StartsWith("https%3a%2f%2f", StringComparison.InvariantCultureIgnoreCase))
+            url = HttpUtility.UrlDecode(url);
+        
         ServerUrl serverUrl;
         try {
-            serverUrl = getConfig().GetConfigServerUrl(uri);
+            serverUrl = getConfig().GetConfigServerUrl(url);
 
             if (serverUrl == null) {
                 //if no serverUrl found, send error message and get out.
@@ -129,18 +158,28 @@ public class proxy : IHttpHandler {
         //if XML couldn't be parsed
         catch (InvalidOperationException ex) {
 
-            string errorMsg = ex.InnerException.Message + " " + uri;
+            string errorMsg = ex.InnerException.Message + " " + url;
             log(TraceLevel.Error, errorMsg);
             sendErrorResponse(context.Response, null, errorMsg, System.Net.HttpStatusCode.InternalServerError);
             return;
         }
         //if mustMatch was set to true and URL wasn't in the list
         catch (ArgumentException ex) {
-            string errorMsg = ex.Message + " " + uri;
+            string errorMsg = ex.Message + " " + url;
             log(TraceLevel.Error, errorMsg);
             sendErrorResponse(context.Response, null, errorMsg, System.Net.HttpStatusCode.Forbidden);
             return;
         }
+        
+        // forceHttp check - converts https to http in the URL
+        if (url.StartsWith("https") && serverUrl.ForceHttp)
+        {
+            url = url.Replace("https","http");
+        }
+        
+        // set wmsResponseRewrite variable
+        this.wmsResourceRewrite = (serverUrl.WMSResourceRewrite) ? true : false;
+        
         //use actual request header instead of a placeholder, if present
         if (context.Request.Headers["referer"] != null)
             PROXY_REFERER = context.Request.Headers["referer"];
@@ -223,12 +262,20 @@ public class proxy : IHttpHandler {
         string post = System.Text.Encoding.UTF8.GetString(postBody);
 
         System.Net.NetworkCredential credentials = null;
-        string requestUri = uri;
+        string requestUri = url;
         bool hasClientToken = false;
         string token = string.Empty;
         string tokenParamName = null;
 
-        if ((serverUrl.HostRedirect != null) && (serverUrl.HostRedirect != string.Empty))
+        if (!url.StartsWith("http")) {
+            if (restFunction != "") {
+                requestUri = serverUrl.Url + "/" + restFunction + "?" + queryString;
+            } else {
+                requestUri = serverUrl.Url + "?" + queryString;
+            }
+        }
+
+        else if ((serverUrl.HostRedirect != null) && (serverUrl.HostRedirect != string.Empty))
         {
             requestUri = serverUrl.HostRedirect + new Uri(requestUri).PathAndQuery;
         }
@@ -236,6 +283,11 @@ public class proxy : IHttpHandler {
         if (serverUrl.Domain != null)
         {
             credentials = new System.Net.NetworkCredential(serverUrl.Username, serverUrl.Password, serverUrl.Domain);
+        }
+        // If the Url is configured with httpBasicAuth=true in proxy.config, create new credentials without domain
+        if (serverUrl.HttpBasicAuth != null && serverUrl.HttpBasicAuth == true)
+        {
+            credentials = new System.Net.NetworkCredential(serverUrl.Username, serverUrl.Password);
         }
         else
         {
@@ -279,7 +331,7 @@ public class proxy : IHttpHandler {
             serverResponse = forwardToServer(context, addTokenToUri(requestUri, token, tokenParamName), postBody, credentials);
         } catch (System.Net.WebException webExc) {
 
-            string errorMsg = webExc.Message + " " + uri;
+            string errorMsg = webExc.Message + " " + url;
             log(TraceLevel.Error, errorMsg);
 
             if (webExc.Response != null)
@@ -384,6 +436,8 @@ public class proxy : IHttpHandler {
             switch (headerKey.ToLower())
             {
                 case "content-type":
+                    log(TraceLevel.Verbose, "Content-type from server: " + fromResponse.ContentType );
+                    continue;
                 case "transfer-encoding":
                 case "accept-ranges":   // Prevent requests for partial content
                 case "access-control-allow-origin":
@@ -393,6 +447,7 @@ public class proxy : IHttpHandler {
                     continue;
                 default:
                     toResponse.AddHeader(headerKey, fromResponse.Headers[headerKey]);
+                    log(TraceLevel.Verbose, "Adding header " + headerKey + " with value " + fromResponse.Headers[headerKey]);
                     break;
             }
         }
@@ -409,13 +464,83 @@ public class proxy : IHttpHandler {
 
     private bool fetchAndPassBackToClient(System.Net.WebResponse serverResponse, HttpResponse clientResponse, bool ignoreAuthenticationErrors) {
         if (serverResponse != null) {
+            MemoryStream ms = new MemoryStream();
+            bool isXML = false;
+          
             using (Stream byteStream = serverResponse.GetResponseStream()) {
+
+                // If the server response is XML where gonna peek at it to find the encoding
+                // in the XML header, but then we need to seek back to the beginning of the stream
+                // and that's not possible with the object from GetResponseStream
+                // So we will create a copy in the form of a MemoryStream, which we can seek in
+                // I only do this if the response type is XML, because that's where I saw the issue
+                // and it feels unnecessary to do it with all responses.
+                if (serverResponse.ContentType.Contains("xml")) {
+                    isXML = true;
+                    int count = 0;
+                    do
+                    {
+                        byte[] buf = new byte[1024];
+                        count = byteStream.Read(buf, 0, 1024);
+                        ms.Write(buf, 0, count);
+                    } while(byteStream.CanRead && count > 0);
+
+                    ms.Seek(0, SeekOrigin.Begin);
+                }
+            
                 // Text response
                 if (serverResponse.ContentType.Contains("text") ||
                     serverResponse.ContentType.Contains("json") ||
-                    serverResponse.ContentType.Contains("xml")) {
-                    using (StreamReader sr = new StreamReader(byteStream)) {
+                    isXML) {
+
+                        string responseEncoding = "";
+
+                    if (isXML) {
+                        log(TraceLevel.Verbose, "Response is XML ");
+                        StreamReader sr = new StreamReader(ms);
+                            char[] buffer = new char[400];
+                            int readBytes = sr.Read(buffer,0,400);
+                            log(TraceLevel.Verbose, "Read bytes from memory stream: " + readBytes);
+                            if (readBytes > 0)
+                            {
+                                string lookAhead = new string(buffer);
+                                string pattern = @"encoding=""([A-Za-z0-9-]+)""";
+                                Match m = Regex.Match(lookAhead,pattern);
+                                if (m.Success) {
+                                    responseEncoding = m.Groups[1].Value;
+                                
+                                    //clientResponse.Charset = encoding;
+                                    log(TraceLevel.Verbose, "Response encoding: " + responseEncoding);
+                                }
+                                else {
+                                    log(TraceLevel.Verbose, "No success :( ");
+                                }
+                            }
+                        ms.Seek(0, SeekOrigin.Begin);
+                    }
+
+                    // json answer
+                    using (StreamReader sr = isXML ? new StreamReader(ms,System.Text.Encoding.GetEncoding(responseEncoding)) : new              StreamReader(byteStream,System.Text.Encoding.GetEncoding(responseEncoding))) {
+                        if (serverResponse.ContentType.Contains("xml")) {
+                            log(TraceLevel.Verbose, "Getting XML response from " + serverResponse.ResponseUri);
+
+                        }
+                        string pattern = "";
                         string strResponse = sr.ReadToEnd();
+                        
+                        if (this.wmsResourceRewrite) {
+                            pattern = @"<OnlineResource.*href=""([^\""]+)";
+                            string urlToReplace = "";
+                            foreach (Match m in Regex.Matches(strResponse, pattern)) {
+                                //Console.WriteLine(m.Groups[1].Value +" index: " + m.Index);
+                                urlToReplace = m.Groups[1].Value;
+                                if (urlToReplace != "") break;
+                            }
+                            if (proxy_url != "" && urlToReplace != "") {
+                                strResponse = strResponse.Replace(urlToReplace, proxy_url + requestKey);
+                            }
+                        }
+                        //log(TraceLevel.Verbose, strResponse);
                         if (
                             !ignoreAuthenticationErrors
                             && strResponse.Contains("error")
@@ -482,7 +607,18 @@ public class proxy : IHttpHandler {
         req.Proxy = SYSTEM_PROXY;
 
         if (credentials != null)
-            req.Credentials = credentials;
+        {
+             req.Credentials = credentials;
+
+            // For now, this is a quick hack.
+            // If the credentials do not contain a domain, assume that we are using Basic Authentication
+            // Because if Domain is empty in the config, and httpBasicAuth is false (or empty), then credentials = null
+            if (credentials.Domain == null)
+            {
+                log(TraceLevel.Info, "Enabling PreAuthenticate for Basic Authentication");
+                req.PreAuthenticate = true;
+            }
+        }
 
         if (bytes != null && bytes.Length > 0 || method == "POST") {
             req.Method = "POST";
@@ -1036,26 +1172,38 @@ public class ProxyConfig
         //split both request and proxy.config urls and compare them
         string[] uriParts = uri.Split(new char[] {'/','?'}, StringSplitOptions.RemoveEmptyEntries);
         string[] configUriParts = new string[] {};
-
+        
         foreach (ServerUrl su in serverUrls) {
+            if (su.Key == null && !uri.StartsWith("http"))
+                continue;
             //if a relative path is specified in the proxy.config, append what's in the request itself
-            if (!su.Url.StartsWith("http"))
-                su.Url = su.Url.Insert(0, uriParts[0]);
-
-            configUriParts = su.Url.Split(new char[] { '/','?' }, StringSplitOptions.RemoveEmptyEntries);
-
-            //if the request has less parts than the config, don't allow
-            if (configUriParts.Length > uriParts.Length) continue;
-
-            int i = 0;
-            for (i = 0; i < configUriParts.Length; i++) {
-
-                if (!configUriParts[i].ToLower().Equals(uriParts[i].ToLower())) break;
-            }
-            if (i == configUriParts.Length) {
-                //if the urls don't match exactly, and the individual matchAll tag is 'false', don't allow
-                if (configUriParts.Length == uriParts.Length || su.MatchAll)
+            if (!uri.StartsWith("http"))
+            {
+                if (su.Key.Equals(uri)) {
                     return su;
+                }
+                // This line is removed, so all proxied urls must start with http/https...
+                //su.Url = su.Url.Insert(0, uriParts[0]);
+            }
+            else {
+
+                configUriParts = su.Url.Split(new char[] { '/','?' }, StringSplitOptions.RemoveEmptyEntries);
+                
+                //if the request has less parts than the config, don't allow
+                if (configUriParts.Length > uriParts.Length) continue;
+
+                int i = 0;
+                for (i = 0; i < configUriParts.Length; i++) {
+
+                    if (!configUriParts[i].ToLower().Equals(uriParts[i].ToLower())) {
+                        break;
+                    }
+                }
+                if (i == configUriParts.Length) {
+                    //if the urls don't match exactly, and the individual matchAll tag is 'false', don't allow
+                    if (configUriParts.Length == uriParts.Length || !su.MatchAll)
+                        return su;
+                }
             }
         }
 
@@ -1071,6 +1219,7 @@ public class ProxyConfig
 }
 
 public class ServerUrl {
+    string key;
     string url;
     string hostRedirect;
     bool matchAll;
@@ -1084,6 +1233,9 @@ public class ServerUrl {
     string tokenParamName;
     string rateLimit;
     string rateLimitPeriod;
+    bool httpBasicAuth;
+    bool forceHttp;
+    bool wmsResourceRewrite;
 
     private ServerUrl()
     {
@@ -1092,6 +1244,12 @@ public class ServerUrl {
     public ServerUrl(String url)
     {
         this.url = url;
+    }
+
+    [XmlAttribute("key")]
+    public string Key {
+        get { return key; }
+        set { key = value; }
     }
 
     [XmlAttribute("url")]
@@ -1160,5 +1318,24 @@ public class ServerUrl {
     public int RateLimitPeriod {
         get { return string.IsNullOrEmpty(rateLimitPeriod)? 60 : int.Parse(rateLimitPeriod); }
         set { rateLimitPeriod = value.ToString(); }
+    }
+    // New attribute to indicate whether or not the configured URL requires basic authentication
+    [XmlAttribute("httpBasicAuth")]
+    public bool HttpBasicAuth
+    {
+        get { return httpBasicAuth; }
+        set { httpBasicAuth = value; }
+    }
+    [XmlAttribute("forceHttp")]
+    public bool ForceHttp
+    {
+        get { return forceHttp; }
+        set { forceHttp = value; }
+    }
+    [XmlAttribute("wmsResourceRewrite")]
+    public bool WMSResourceRewrite
+    {
+        get { return wmsResourceRewrite; }
+        set { wmsResourceRewrite = value; }
     }
 }

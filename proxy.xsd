@@ -8,6 +8,7 @@
                         <xs:sequence>
                             <xs:element maxOccurs="unbounded" name="serverUrl">
                                 <xs:complexType>
+                                    <xs:attribute name="key" type="xs:string" use="optional" />
                                     <xs:attribute name="url" type="xs:string" use="required" />
                                     <xs:attribute name="matchAll" type="xs:boolean" use="required" />
                                     <xs:attribute name="username" type="xs:string" use="optional" />
@@ -19,7 +20,10 @@
                                     <xs:attribute name="accessToken" type="xs:string" use="optional" />
                                     <xs:attribute name="rateLimit" type="xs:integer" use="optional" />
                                     <xs:attribute name="rateLimitPeriod" type="xs:integer" use="optional" />
+                                    <xs:attribute name="httpBasicAuth" type="xs:boolean" use="optional" />
                                     <xs:attribute name="hostRedirect" type="xs:string" use="optional" />
+                                    <xs:attribute name="forceHttp" type="xs:boolean" use="optional" />
+                                    <xs:attribute name="wmsResourceRewrite" type="xs:boolean" use="optional" />
                                 </xs:complexType>
                             </xs:element>
                         </xs:sequence>
