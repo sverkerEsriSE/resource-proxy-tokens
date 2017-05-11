@@ -98,7 +98,7 @@ encodings :)
 http://[yourmachine]/tokenproxy/proxy.ashx?ping
 ```
 * Configure URL-rewriting for the website (not the application) according to this image:
-![Image of URL-rewrite](https://sverkeresrise.github.com/images/urlrewrite.png)
+![Image of URL-rewrite](https://github.com/sverkerEsriSE/resource-proxy-tokens/raw/master/url_rewrite.png)
 Replace the *proxy*-part in the start of Pattern if you want another URL to the proxy than http://[yourmachine]/proxy
 Replace the *tokenproxy*-part in the Rewrite URL if you put the files in a folder other than tokenproxy under wwwroot
 * Troubleshooting: If you get an error message 404.3, it's possible that ASP.NET have not been set up. On Windows 8, go to "Turn Windows features on or off" -> "Internet Information Services" -> "World Wide Web Services" -> "Application Development Features" -> "ASP.NET 4.5".
@@ -134,10 +134,10 @@ Since a proxy exposed on the Internet can be accessible by anyone knowing the UR
 See the XML configuration properties listed below.
 
 ### New parameters in this tokenized version:
-* key : Characters *[A-Za-z0-9_]* - the token with which you want to access the **url** (which must also be specified for the `<serverUrl>`)
-* httpBasicAuth : can be *true* or *false* - indicates if the password uses http basic auth. Specify **username** and **password** also
-* forceHttp : if your site is https only, but you want to access services which are http only, and AGOL or Portal keeps rewriting the url with https
-* wmsResourceRewrite : *true* if the GetCapabilites provides OnlineResource URL:s which also requires the same http basic auth as the GetCapabilities request
+* *key* : Characters *[A-Za-z0-9_]* - the token with which you want to access the **url** (which must also be specified for the `<serverUrl>`)
+* *httpBasicAuth* : can be *true* or *false* - indicates if the password uses http basic auth. Specify **username** and **password** also
+* *forceHttp* : if your site is https only, but you want to access services which are http only, and AGOL or Portal keeps rewriting the url with https
+* *wmsResourceRewrite* : *true* if the GetCapabilites provides OnlineResource URL:s which also requires the same http basic auth as the GetCapabilities request
 
 ### Standard parameters from the Esri resource-proxy version
 * Use the ProxyConfig tag to specify the following proxy level settings.
