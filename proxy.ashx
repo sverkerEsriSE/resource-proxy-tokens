@@ -451,6 +451,11 @@ public class proxy : IHttpHandler {
                     break;
             }
         }
+        //TODO: Quick hack if portal complains about this 2017-05-26
+        if (toResponse.Headers['Access-Control-Allow-Credentials'] == null && toResponse.Headers['access-control-allow-credentials'] == null)
+        {
+            toResponse.AddHeader('Access-Control-Allow-Credentials', 'true');
+        }
         // Reset the content-type for OGC WMS - issue #367
         // Note: this might not be what everyone expects, but it helps some users
         // TODO: make this configurable
