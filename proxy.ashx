@@ -69,7 +69,7 @@ public class proxy : IHttpHandler {
 
     public void ProcessRequest(HttpContext context) {
 
-        proxy_url = context.Request.Url.Scheme + "://" + context.Request.Url.Host + "/" + context.Request.Url.Segments[1];
+        proxy_url = context.Request.Url.Scheme + "://" + context.Request.Url.Host + "/" + (context.Request.RawUrl.Split('/'))[1] + "/";
 
         if (logTraceListener == null)
         {
@@ -452,9 +452,9 @@ public class proxy : IHttpHandler {
             }
         }
         //TODO: Quick hack if portal complains about this 2017-05-26
-        if (toResponse.Headers['Access-Control-Allow-Credentials'] == null && toResponse.Headers['access-control-allow-credentials'] == null)
+        if (toResponse.Headers["Access-Control-Allow-Credentials"] == null && toResponse.Headers["access-control-allow-credentials"] == null)
         {
-            toResponse.AddHeader('Access-Control-Allow-Credentials', 'true');
+            toResponse.AddHeader("Access-Control-Allow-Credentials", "true");
         }
         // Reset the content-type for OGC WMS - issue #367
         // Note: this might not be what everyone expects, but it helps some users
