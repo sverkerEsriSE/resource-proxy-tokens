@@ -25,6 +25,7 @@ public class proxy : IHttpHandler {
 
     private static String proxy_url = "";
     private bool wmsResourceRewrite = false;
+    private bool flipWmsBboxCoords = false;
     private string requestKey = "";
 
     class RateMeter {
@@ -179,6 +180,9 @@ public class proxy : IHttpHandler {
         
         // set wmsResponseRewrite variable
         this.wmsResourceRewrite = (serverUrl.WMSResourceRewrite) ? true : false;
+
+        // set flipWMSBboxCoords variable
+        this.flipWmsBboxCoords = (serverUrl.FlipWMSBboxCoords) ? true : false;
         
         //use actual request header instead of a placeholder, if present
         if (context.Request.Headers["referer"] != null)
@@ -407,6 +411,18 @@ public class proxy : IHttpHandler {
 /**
 * Private
 */
+
+    private StreamReader getStreamReader(MemoryStream ms, Stream byteStream, bool isXML, string responseEncoding)
+    {
+        bool responseContainsEncodingString = (responseEncoding == "" ? false : true);
+
+        if (isXML && responseContainsEncodingString)
+            return new StreamReader(ms,System.Text.Encoding.GetEncoding(responseEncoding));
+        if (isXML && !responseContainsEncodingString)
+            return new StreamReader(ms);
+        return new StreamReader(byteStream);
+    }
+
     private byte[] readRequestPostBody(HttpContext context) {
         if (context.Request.InputStream.Length > 0) {
             byte[] bytes = new byte[context.Request.InputStream.Length];
@@ -492,7 +508,7 @@ public class proxy : IHttpHandler {
 
                     ms.Seek(0, SeekOrigin.Begin);
                 }
-            
+                bool responseContainsEncodingString = false;
                 // Text response
                 if (serverResponse.ContentType.Contains("text") ||
                     serverResponse.ContentType.Contains("json") ||
@@ -524,8 +540,7 @@ public class proxy : IHttpHandler {
                         ms.Seek(0, SeekOrigin.Begin);
                     }
 
-                    // json answer
-                    using (StreamReader sr = isXML ? new StreamReader(ms,System.Text.Encoding.GetEncoding(responseEncoding)) : new              StreamReader(byteStream,System.Text.Encoding.GetEncoding(responseEncoding))) {
+                    using (StreamReader sr = getStreamReader(ms,byteStream,isXML,responseEncoding)) {
                         if (serverResponse.ContentType.Contains("xml")) {
                             log(TraceLevel.Verbose, "Getting XML response from " + serverResponse.ResponseUri);
 
@@ -537,12 +552,34 @@ public class proxy : IHttpHandler {
                             pattern = @"<OnlineResource.*href=""([^\""]+)";
                             string urlToReplace = "";
                             foreach (Match m in Regex.Matches(strResponse, pattern)) {
-                                //Console.WriteLine(m.Groups[1].Value +" index: " + m.Index);
                                 urlToReplace = m.Groups[1].Value;
                                 if (urlToReplace != "") break;
                             }
                             if (proxy_url != "" && urlToReplace != "") {
                                 strResponse = strResponse.Replace(urlToReplace, proxy_url + requestKey);
+                            }
+                        }
+
+                        if (this.flipWmsBboxCoords) {
+                            pattern = @"<ows:LowerCorner>(-?[0-9]\d*\.[0-9]\d*)\s(-?[0-9]\d*\.[0-9]\d*)<\/ows:LowerCorner>";
+                            MatchCollection mc = Regex.Matches(strResponse, pattern);
+                            if (mc[0] != null) {
+                                Match m = mc[0];
+                                //Console.WriteLine(m.Groups[1].Value +" index: " + m.Index);
+                                String origBbox = String.Format(@"<ows:LowerCorner>{0} {1}</ows:LowerCorner>", m.Groups[1].Value, m.Groups[2].Value); 
+                                String newBbox = String.Format(@"<ows:LowerCorner>{1} {0}</ows:LowerCorner>", m.Groups[1].Value, m.Groups[2].Value);
+                                strResponse = strResponse.Replace(origBbox, newBbox);
+                              
+                            }
+                            pattern = @"<ows:UpperCorner>(-?[0-9]\d*\.[0-9]\d*)\s(-?[0-9]\d*\.[0-9]\d*)<\/ows:UpperCorner>";
+                            mc = Regex.Matches(strResponse, pattern);
+                            if (mc[0] != null) {
+                                Match m = mc[0];
+                                //Console.WriteLine(m.Groups[1].Value +" index: " + m.Index);
+                                String origBbox = String.Format(@"<ows:UpperCorner>{0} {1}</ows:UpperCorner>", m.Groups[1].Value, m.Groups[2].Value); 
+                                String newBbox = String.Format(@"<ows:UpperCorner>{1} {0}</ows:UpperCorner>", m.Groups[1].Value, m.Groups[2].Value);
+                                strResponse = strResponse.Replace(origBbox, newBbox);
+                              
                             }
                         }
                         //log(TraceLevel.Verbose, strResponse);
@@ -1241,6 +1278,7 @@ public class ServerUrl {
     bool httpBasicAuth;
     bool forceHttp;
     bool wmsResourceRewrite;
+    bool flipWmsBboxCoords;
 
     private ServerUrl()
     {
@@ -1342,5 +1380,11 @@ public class ServerUrl {
     {
         get { return wmsResourceRewrite; }
         set { wmsResourceRewrite = value; }
+    }
+    [XmlAttribute("flipWmsBboxCoords")]
+    public bool FlipWMSBboxCoords
+    {
+        get { return flipWmsBboxCoords; }
+        set { flipWmsBboxCoords = value; }
     }
 }

@@ -137,7 +137,8 @@ See the XML configuration properties listed below.
 * *key* : Characters *[A-Za-z0-9_]* - the token with which you want to access the **url** (which must also be specified for the `<serverUrl>`)
 * *httpBasicAuth* : can be *true* or *false* - indicates if the password uses http basic auth. Specify **username** and **password** also
 * *forceHttp* : if your site is https only, but you want to access services which are http only, and AGOL or Portal keeps rewriting the url with https
-* *wmsResourceRewrite* : *true* if the GetCapabilites provides OnlineResource URL:s which also requires the same http basic auth as the GetCapabilities request
+* *wmsResourceRewrite* : set to *true* if the GetCapabilites provides OnlineResource URL:s which also requires the same http basic auth as the GetCapabilities request
+* *flipWmsBboxCoords* : set to *true* if you are using a WMS/WMTS which sends the bounding box coordinates in the wrong order (you get no tiles loading in AGOL)
 
 ### Standard parameters from the Esri resource-proxy version
 * Use the ProxyConfig tag to specify the following proxy level settings.
