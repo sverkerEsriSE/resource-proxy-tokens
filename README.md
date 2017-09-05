@@ -168,7 +168,7 @@ Example of proxy to a WMS using HTTP Basic Authentication and rewriting the Onli
 to access it:
 ```xml
 <serverUrl url="https://url.lantmateriet.se/wms"
-    key="LM_WMS_Service_Token"
+    key="MyMadeUpStringOfCharacters"
     username="user0001"
     password="xxXXxxXXxx"
     wmsResourceRewrite="true"
@@ -177,7 +177,7 @@ to access it:
 ```
 The URL to add in ArcGIS Online for the above service will be:
 ```
-https://[yourmachine]/proxy/LM_WMS_Service_Token
+https://[yourmachine]/proxy/MyMadeUpStringOfCharacters
 
 Example of a tag for a resource which does not require authentication
 ```xml
