@@ -172,12 +172,15 @@ to access it:
     username="user0001"
     password="xxXXxxXXxx"
     wmsResourceRewrite="true"
-    matchAll="true">
+    matchAll="true"
+    httpBasicAuth="true"
+    >
 </serverUrl>
 ```
 The URL to add in ArcGIS Online for the above service will be:
 ```
 https://[yourmachine]/proxy/MyMadeUpStringOfCharacters
+```
 
 Example of a tag for a resource which does not require authentication
 ```xml
