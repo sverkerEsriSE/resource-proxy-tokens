@@ -165,9 +165,9 @@ See the XML configuration properties listed below.
 Note: Refresh the proxy application after updates to the proxy.config have been made.
 
 Example of proxy to a WMS using HTTP Basic Authentication and rewriting the OnlineResource in GetCapabilites XML, and using a token
-to access it:
+to access it. **Replace the _url_, _key_, _username_ and _password_ with your own values**:
 ```xml
-<serverUrl url="https://url.lantmateriet.se/wms"
+<serverUrl url="https://url.lantmateriet.se/orto/wms/v1"
     key="MyMadeUpStringOfCharacters"
     username="user0001"
     password="xxXXxxXXxx"
