@@ -25,6 +25,7 @@ public class proxy : IHttpHandler {
 
     private static String proxy_url = "";
     private bool wmsResourceRewrite = false;
+	private bool changeEncodingToUTF8 = false;
     private bool flipWmsBboxCoords = false;
     private string requestKey = "";
 
@@ -180,6 +181,9 @@ public class proxy : IHttpHandler {
         
         // set wmsResponseRewrite variable
         this.wmsResourceRewrite = (serverUrl.WMSResourceRewrite) ? true : false;
+		
+		// set changeEncodingToUTF8 variable
+        this.changeEncodingToUTF8 = (serverUrl.ChangeEncodingToUTF8) ? true : false;
 
         // set flipWMSBboxCoords variable
         this.flipWmsBboxCoords = (serverUrl.FlipWMSBboxCoords) ? true : false;
@@ -530,7 +534,7 @@ public class proxy : IHttpHandler {
                                 if (m.Success) {
                                     responseEncoding = m.Groups[1].Value;
                                 
-                                    //clientResponse.Charset = encoding;
+                                    //clientResponse.Charset = "";
                                     log(TraceLevel.Verbose, "Response encoding: " + responseEncoding);
                                 }
                                 else {
@@ -547,6 +551,15 @@ public class proxy : IHttpHandler {
                         }
                         string pattern = "";
                         string strResponse = sr.ReadToEnd();
+						
+						if (this.changeEncodingToUTF8)
+						{
+							pattern = @"encoding=""([A-Za-z0-9-]+)""";
+							foreach (Match m in Regex.Matches(strResponse, pattern)) {
+								strResponse = strResponse.Replace(m.ToString(), "encoding=\"utf-8\"");
+							}
+							pattern = "";
+						}
                         
                         if (this.wmsResourceRewrite) {
                             pattern = @"<OnlineResource.*href=""([^\""]+)";
@@ -1278,6 +1291,7 @@ public class ServerUrl {
     bool httpBasicAuth;
     bool forceHttp;
     bool wmsResourceRewrite;
+	bool changeEncodingToUTF8;
     bool flipWmsBboxCoords;
 
     private ServerUrl()
@@ -1380,6 +1394,12 @@ public class ServerUrl {
     {
         get { return wmsResourceRewrite; }
         set { wmsResourceRewrite = value; }
+    }
+	[XmlAttribute("changeEncodingToUTF8")]
+    public bool ChangeEncodingToUTF8
+    {
+        get { return changeEncodingToUTF8; }
+        set { changeEncodingToUTF8 = value; }
     }
     [XmlAttribute("flipWmsBboxCoords")]
     public bool FlipWMSBboxCoords
