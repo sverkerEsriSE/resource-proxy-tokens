@@ -24,6 +24,7 @@
                                     <xs:attribute name="hostRedirect" type="xs:string" use="optional" />
                                     <xs:attribute name="forceHttp" type="xs:boolean" use="optional" />
                                     <xs:attribute name="wmsResourceRewrite" type="xs:boolean" use="optional" />
+                                    <xs:attribute name="changeEncodingToUTF8" type="xs:boolean" use="optional" />
                                     <xs:attribute name="flipWmsBboxCoords" type="xs:boolean" use="optional" />
                                 </xs:complexType>
                             </xs:element>
