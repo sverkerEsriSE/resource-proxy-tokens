@@ -73,11 +73,13 @@ http://[yourmachine]proxy/MyVerySecretToken/export?f=image.....
 so the URLRewrite will first extract the token (MyVerySecretToken) but also the function (export) so we can build a proper URL inside the proxy code, to send the request to.
 
 ### The encoding issue
+**Added a quick hack fix for this**: look at setting parameter changeEncodingToUTF8
 I also noticed that with some WMS Services, the server will not have a content encoding set in the serverResponse, but only in the GetCapabilites XML header
 ```
 <?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>
 ```
 The answer to the client however, would be sent as UTF-8 for some reason (seems like that's the default internal representation in DotNet for strings/streams etc.??).
+
 
 ### Solution to the encoding issue
 Without digging to deep into the understanding of HTTP headers, and what's expected of them, I found out by trial-and-error that I need to peek ahead in the response stream and
@@ -138,6 +140,7 @@ See the XML configuration properties listed below.
 * *httpBasicAuth* : can be *true* or *false* - indicates if the password uses http basic auth. Specify **username** and **password** also
 * *forceHttp* : if your site is https only, but you want to access services which are http only, and AGOL or Portal keeps rewriting the url with https
 * *wmsResourceRewrite* : set to *true* if the GetCapabilites provides OnlineResource URL:s which also requires the same http basic auth as the GetCapabilities request
+* *changeEncodingToUTF8* : set to *true* if you are getting weird characters in ArcMap instead of swedish characters like å,ä,ö
 * *flipWmsBboxCoords* : set to *true* if you are using a WMS/WMTS which sends the bounding box coordinates in the wrong order (you get no tiles loading in AGOL)
 
 ### Standard parameters from the Esri resource-proxy version
@@ -167,13 +170,14 @@ Note: Refresh the proxy application after updates to the proxy.config have been 
 Example of proxy to a WMS using HTTP Basic Authentication and rewriting the OnlineResource in GetCapabilites XML, and using a token
 to access it. **Replace the _url_, _key_, _username_ and _password_ with your own values**:
 ```xml
-<serverUrl url="https://url.lantmateriet.se/orto/wms/v1"
+<serverUrl url="https://url.lantmateriet.se/topowebb/wms/v1"
     key="MyMadeUpStringOfCharacters"
     username="user0001"
     password="xxXXxxXXxx"
     wmsResourceRewrite="true"
     matchAll="true"
     httpBasicAuth="true"
+    changeEncodingToUTF8="true"
     >
 </serverUrl>
 ```
