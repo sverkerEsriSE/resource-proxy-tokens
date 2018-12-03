@@ -79,6 +79,8 @@ public class proxy : IHttpHandler {
             Trace.Listeners.Add(logTraceListener);
         }
 
+	log(TraceLevel.Info,"Request from " + context.Request.UserHostAddress);
+
         HttpResponse response = context.Response;
         if (context.Request.Url.Query.Length < 1)
         {
