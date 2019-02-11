@@ -27,6 +27,7 @@ public class proxy : IHttpHandler {
     private bool wmsResourceRewrite = false;
 	private bool changeEncodingToUTF8 = false;
     private bool flipWmsBboxCoords = false;
+	private bool isWMTS = false;
     private string requestKey = "";
 
     class RateMeter {
@@ -189,6 +190,9 @@ public class proxy : IHttpHandler {
 
         // set flipWMSBboxCoords variable
         this.flipWmsBboxCoords = (serverUrl.FlipWMSBboxCoords) ? true : false;
+		
+		// set isWMTS variable
+        this.isWMTS = (serverUrl.IsWMTS) ? true : false;
         
         //use actual request header instead of a placeholder, if present
         if (context.Request.Headers["referer"] != null)
@@ -299,7 +303,7 @@ public class proxy : IHttpHandler {
         {
             credentials = new System.Net.NetworkCredential(serverUrl.Username, serverUrl.Password);
         }
-        else
+        else if (!isWMTS)
         {
             //if token comes with client request, it takes precedence over token or credentials stored in configuration
             hasClientToken = requestUri.Contains("?token=") || requestUri.Contains("&token=") || post.Contains("?token=") || post.Contains("&token=");
@@ -573,29 +577,66 @@ public class proxy : IHttpHandler {
                             if (proxy_url != "" && urlToReplace != "") {
                                 strResponse = strResponse.Replace(urlToReplace, proxy_url + requestKey);
                             }
+
+							
+							pattern = @"<ows:Get.*href=""([^\""?]+)";
+                            urlToReplace = "";
+                            foreach (Match m in Regex.Matches(strResponse, pattern)) {
+                                urlToReplace = m.Groups[1].Value;
+                                if (urlToReplace != "") break;
+                            }
+                            if (proxy_url != "" && urlToReplace != "") {
+								if (!isWMTS)
+									strResponse = strResponse.Replace(urlToReplace, proxy_url + requestKey);
+								else
+									strResponse = strResponse.Replace(urlToReplace, proxy_url + requestKey + "/");
+                            }
                         }
+						/* This code is only needed if the wmts does not have LowerCorner UpperCorner bounding box,
+						* But only topLeftCorner */
+						/*
+						if (this.flipWmsBboxCoords && this.isWMTS) {
+							pattern = @"<TopLeftCorner>(-?\d*\.\d*)\s(-?\d*\.\d*)<\/TopLeftCorner>";
+                            MatchCollection mc = Regex.Matches(strResponse, pattern);
+							String origBbox;
+							String newBbox;
+							Match m;
+							for (int i = 0; i < mc.Count; i++)
+							{
+								m = mc[i];
+								origBbox = String.Format(@"<TopLeftCorner>{0} {1}</TopLeftCorner>", m.Groups[1].Value, m.Groups[2].Value); 
+								newBbox = String.Format(@"<TopLeftCorner>{1} {0}</TopLeftCorner>", m.Groups[1].Value, m.Groups[2].Value);
+                                strResponse = strResponse.Replace(origBbox, newBbox);
+                              
+                            }
+                        }*/
 
                         if (this.flipWmsBboxCoords) {
-                            pattern = @"<ows:LowerCorner>(-?[0-9]\d*\.[0-9]\d*)\s(-?[0-9]\d*\.[0-9]\d*)<\/ows:LowerCorner>";
+							pattern = @"<ows:LowerCorner>(-?[0-9]\d*\.[0-9]\d*)\s(-?[0-9]\d*\.[0-9]\d*)<\/ows:LowerCorner>";
                             MatchCollection mc = Regex.Matches(strResponse, pattern);
-                            if (mc[0] != null) {
-                                Match m = mc[0];
-                                //Console.WriteLine(m.Groups[1].Value +" index: " + m.Index);
-                                String origBbox = String.Format(@"<ows:LowerCorner>{0} {1}</ows:LowerCorner>", m.Groups[1].Value, m.Groups[2].Value); 
-                                String newBbox = String.Format(@"<ows:LowerCorner>{1} {0}</ows:LowerCorner>", m.Groups[1].Value, m.Groups[2].Value);
-                                strResponse = strResponse.Replace(origBbox, newBbox);
-                              
+                            if (mc != null && mc.Count > 0 && mc[0] != null) {
+								for (int i = 0; i < mc.Count; i++)
+								{
+									Match m = mc[i];
+									//Console.WriteLine(m.Groups[1].Value +" index: " + m.Index);
+									String origBbox = String.Format(@"<ows:LowerCorner>{0} {1}</ows:LowerCorner>", m.Groups[1].Value, m.Groups[2].Value); 
+									String newBbox = String.Format(@"<ows:LowerCorner>{1} {0}</ows:LowerCorner>", m.Groups[1].Value, m.Groups[2].Value);
+									strResponse = strResponse.Replace(origBbox, newBbox);
+								}
                             }
-                            pattern = @"<ows:UpperCorner>(-?[0-9]\d*\.[0-9]\d*)\s(-?[0-9]\d*\.[0-9]\d*)<\/ows:UpperCorner>";
-                            mc = Regex.Matches(strResponse, pattern);
-                            if (mc[0] != null) {
-                                Match m = mc[0];
-                                //Console.WriteLine(m.Groups[1].Value +" index: " + m.Index);
-                                String origBbox = String.Format(@"<ows:UpperCorner>{0} {1}</ows:UpperCorner>", m.Groups[1].Value, m.Groups[2].Value); 
-                                String newBbox = String.Format(@"<ows:UpperCorner>{1} {0}</ows:UpperCorner>", m.Groups[1].Value, m.Groups[2].Value);
-                                strResponse = strResponse.Replace(origBbox, newBbox);
-                              
-                            }
+
+							pattern = @"<ows:UpperCorner>(-?[0-9]\d*\.[0-9]\d*)\s(-?[0-9]\d*\.[0-9]\d*)<\/ows:UpperCorner>";
+								mc = Regex.Matches(strResponse, pattern);
+								if (mc != null && mc.Count > 0 && mc[0] != null) {
+									for (int i = 0; i < mc.Count; i++)
+									{
+										Match m = mc[i];
+										//Console.WriteLine(m.Groups[1].Value +" index: " + m.Index);
+										String origBbox = String.Format(@"<ows:UpperCorner>{0} {1}</ows:UpperCorner>", m.Groups[1].Value, m.Groups[2].Value); 
+										String newBbox = String.Format(@"<ows:UpperCorner>{1} {0}</ows:UpperCorner>", m.Groups[1].Value, m.Groups[2].Value);
+										strResponse = strResponse.Replace(origBbox, newBbox);
+									}
+								}
                         }
                         //log(TraceLevel.Verbose, strResponse);
                         if (
@@ -1295,6 +1336,7 @@ public class ServerUrl {
     bool wmsResourceRewrite;
 	bool changeEncodingToUTF8;
     bool flipWmsBboxCoords;
+	bool isWMTS;
 
     private ServerUrl()
     {
@@ -1409,4 +1451,10 @@ public class ServerUrl {
         get { return flipWmsBboxCoords; }
         set { flipWmsBboxCoords = value; }
     }
+	[XmlAttribute("isWMTS")]
+	public bool IsWMTS
+	{
+		get { return isWMTS; }
+		set { isWMTS = value; }
+	}
 }
