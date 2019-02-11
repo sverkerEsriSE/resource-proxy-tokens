@@ -142,6 +142,7 @@ See the XML configuration properties listed below.
 * *wmsResourceRewrite* : set to *true* if the GetCapabilites provides OnlineResource URL:s which also requires the same http basic auth as the GetCapabilities request
 * *changeEncodingToUTF8* : set to *true* if you are getting weird characters in ArcMap instead of swedish characters like å,ä,ö
 * *flipWmsBboxCoords* : set to *true* if you are using a WMS/WMTS which sends the bounding box coordinates in the wrong order (you get no tiles loading in AGOL)
+* *isWMTS* : set to *true* if you are using a WMTS
 
 ### Standard parameters from the Esri resource-proxy version
 * Use the ProxyConfig tag to specify the following proxy level settings.
