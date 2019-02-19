@@ -566,7 +566,7 @@ public class proxy : IHttpHandler {
 							}
 							pattern = "";
 						}
-                        
+
                         if (this.wmsResourceRewrite) {
                             pattern = @"<OnlineResource.*href=""([^\""]+)";
                             string urlToReplace = "";
@@ -592,29 +592,14 @@ public class proxy : IHttpHandler {
 									strResponse = strResponse.Replace(urlToReplace, proxy_url + requestKey + "/");
                             }
                         }
-						/* This code is only needed if the wmts does not have LowerCorner UpperCorner bounding box,
-						* But only topLeftCorner */
-						/*
-						if (this.flipWmsBboxCoords && this.isWMTS) {
-							pattern = @"<TopLeftCorner>(-?\d*\.\d*)\s(-?\d*\.\d*)<\/TopLeftCorner>";
-                            MatchCollection mc = Regex.Matches(strResponse, pattern);
-							String origBbox;
-							String newBbox;
-							Match m;
-							for (int i = 0; i < mc.Count; i++)
-							{
-								m = mc[i];
-								origBbox = String.Format(@"<TopLeftCorner>{0} {1}</TopLeftCorner>", m.Groups[1].Value, m.Groups[2].Value); 
-								newBbox = String.Format(@"<TopLeftCorner>{1} {0}</TopLeftCorner>", m.Groups[1].Value, m.Groups[2].Value);
-                                strResponse = strResponse.Replace(origBbox, newBbox);
-                              
-                            }
-                        }*/
+						
+						bool bboxFlipped = false;
 
                         if (this.flipWmsBboxCoords) {
 							pattern = @"<ows:LowerCorner>(-?[0-9]\d*\.[0-9]\d*)\s(-?[0-9]\d*\.[0-9]\d*)<\/ows:LowerCorner>";
                             MatchCollection mc = Regex.Matches(strResponse, pattern);
                             if (mc != null && mc.Count > 0 && mc[0] != null) {
+								bboxFlipped = true;
 								for (int i = 0; i < mc.Count; i++)
 								{
 									Match m = mc[i];
@@ -638,6 +623,27 @@ public class proxy : IHttpHandler {
 									}
 								}
                         }
+						
+						/* This code is only needed if the wmts does not have LowerCorner UpperCorner bounding box,
+						* But only topLeftCorner */
+						
+						if (this.flipWmsBboxCoords && this.isWMTS && !bboxFlipped) {
+							pattern = @"<TopLeftCorner>(-?\d*\.\d*)\s(-?\d*\.\d*)<\/TopLeftCorner>";
+                            MatchCollection mc = Regex.Matches(strResponse, pattern);
+							String origBbox;
+							String newBbox;
+							Match m;
+							for (int i = 0; i < mc.Count; i++)
+							{
+								m = mc[i];
+								origBbox = String.Format(@"<TopLeftCorner>{0} {1}</TopLeftCorner>", m.Groups[1].Value, m.Groups[2].Value); 
+								newBbox = String.Format(@"<TopLeftCorner>{1} {0}</TopLeftCorner>", m.Groups[1].Value, m.Groups[2].Value);
+                                strResponse = strResponse.Replace(origBbox, newBbox);
+                              
+                            }
+                        }
+						
+						
                         //log(TraceLevel.Verbose, strResponse);
                         if (
                             !ignoreAuthenticationErrors
