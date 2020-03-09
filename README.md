@@ -101,6 +101,12 @@ http://[yourmachine]/tokenproxy/proxy.ashx?ping
 ```
 * Configure URL-rewriting for the website (not the application) according to this image:
 ![Image of URL-rewrite](https://github.com/sverkerEsriSE/resource-proxy-tokens/raw/master/url_rewrite.png)
+
+```
+You can copy the string below if setting up the rewrite from the IIS Manager:
+tokenproxy/proxy.ashx?url={R:1}&restFunction={R:3}
+```
+
 Replace the *proxy*-part in the start of Pattern if you want another URL to the proxy than http://[yourmachine]/proxy
 Replace the *tokenproxy*-part in the Rewrite URL if you put the files in a folder other than tokenproxy under wwwroot
 * Troubleshooting: If you get an error message 404.3, it's possible that ASP.NET have not been set up. On Windows 8, go to "Turn Windows features on or off" -> "Internet Information Services" -> "World Wide Web Services" -> "Application Development Features" -> "ASP.NET 4.5".
