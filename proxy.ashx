@@ -553,6 +553,8 @@ public class proxy : IHttpHandler {
                     using (StreamReader sr = getStreamReader(ms,byteStream,isXML,responseEncoding)) {
                         if (serverResponse.ContentType.Contains("xml")) {
                             log(TraceLevel.Verbose, "Getting XML response from " + serverResponse.ResponseUri);
+		            //replace epsg with EPSG
+		            strResponse = strResponse.Replace("epsg:", "EPSG:");
 
                         }
                         string pattern = "";
