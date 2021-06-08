@@ -99,7 +99,7 @@ encodings :)
 ```
 http://[yourmachine]/tokenproxy/proxy.ashx?ping
 ```
-* Configure URL-rewriting for the website (not the application) according to this image:
+* Configure URL-rewriting for the website, usually called "Default Web Site" according to this image:
 ![Image of URL-rewrite](https://github.com/sverkerEsriSE/resource-proxy-tokens/raw/master/url_rewrite.png)
 
 ```
