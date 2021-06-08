@@ -92,7 +92,7 @@ encodings :)
 * Download and unzip the .zip file or clone the repository.
 * Install the contents as a .NET Web Application, specifying a .NET 4.0 application pool or later. For example using the following steps:
     * Open IIS Manager
-    * If you put the files in a **tokeproxy** folder within wwwroot, right-click it and select "Convert to Application".
+    * If you put the files in a **tokenproxy** folder within wwwroot, right-click it and select "Convert to Application".
     * Make sure the "Application pool" is at least 4.0.
 * Install [URLRewrite](https://www.iis.net/downloads/microsoft/url-rewrite) for IIS
 * Test that the proxy is installed and available:
