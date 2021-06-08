@@ -104,6 +104,7 @@ http://[yourmachine]/tokenproxy/proxy.ashx?ping
 
 ```
 You can copy the string below if setting up the rewrite from the IIS Manager:
+^proxy\/([A-Za-z0-9]*)(\/*)([^?]*)
 tokenproxy/proxy.ashx?url={R:1}&restFunction={R:3}
 ```
 
