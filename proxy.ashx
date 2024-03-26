@@ -72,7 +72,12 @@ public class proxy : IHttpHandler {
 
     public void ProcessRequest(HttpContext context) {
 
-        proxy_url = context.Request.Url.Scheme + "://" + context.Request.Url.Host + "/" + (context.Request.RawUrl.Split('/'))[1] + "/";
+	if (context.Request.Url.IsDefaultPort) {
+        	proxy_url = context.Request.Url.Scheme + "://" + context.Request.Url.Host + "/" + (context.Request.RawUrl.Split('/'))[1] + "/";
+	}
+	else {
+		proxy_url = context.Request.Url.Scheme + "://" + context.Request.Url.Host + ":" + context.Request.Url.Port.ToString() + "/" + (context.Request.RawUrl.Split('/'))[1] + "/";
+	}
 
         if (logTraceListener == null)
         {
