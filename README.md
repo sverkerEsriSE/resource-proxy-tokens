@@ -5,7 +5,7 @@ ArcGIS Resource Proxy
 This resource proxy is a fork of the [Esri Resource Proxy](https://github.com/Esri/resource-proxy) so please see that repo for full documentation.
 This document will focus on changes made and how to use it with certain Swedish WMS resource.
 
-*READ THROUGH THIS WHOLE DOCUMENT BEFORE USING THE PROXY*
+**_PLEASE READ THROUGH THIS WHOLE DOCUMENT BEFORE USING THE PROXY_**
 
 ## Disclaimer
 This code has not been thoroughly tested for bugs, security issues and performance.
