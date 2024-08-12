@@ -909,6 +909,10 @@ public class proxy : IHttpHandler {
             foreach (String allowedReferer in allowedReferers)
             {
 
+		if (referer == allowedReferer) {
+                    return true;
+                }
+
                 //Parse the protocol, domain and path of the referer
                 String refererProtocol = referer.StartsWith("https://") ? "https" : "http";
                 String refererDomain = getDomainfromURL(referer, refererProtocol);
